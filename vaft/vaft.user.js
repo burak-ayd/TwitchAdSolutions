@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TwitchAdSolutions (vaft)
 // @namespace    https://github.com/pixeltris/TwitchAdSolutions
-// @version      12.0.0
+// @version      13.0.0
 // @description  Multiple solutions for blocking Twitch ads (vaft)
 // @updateURL    https://github.com/pixeltris/TwitchAdSolutions/raw/master/vaft/vaft.user.js
 // @downloadURL  https://github.com/pixeltris/TwitchAdSolutions/raw/master/vaft/vaft.user.js
@@ -39,12 +39,16 @@
     var IsPlayerAutoQuality = null;
     const oldWorker = window.Worker;
     function hookWindowWorker() {
-        window.Worker = class Worker extends oldWorker {
+        var newWorker = window.Worker = class Worker extends oldWorker {
             constructor(twitchBlobUrl, options) {
                 var isTwitchWorker = false;
                 try {
                     isTwitchWorker = new URL(twitchBlobUrl).origin.endsWith('.twitch.tv');
                 } catch {}
+                if (newWorker.toString() !== window.Worker.toString()) {
+                    console.log('Multiple twitch adblockers installed. Skipping Worker hook (vaft)');
+                    isTwitchWorker = false;
+                }
                 if (!isTwitchWorker) {
                     super(twitchBlobUrl, options);
                     return;
@@ -229,17 +233,21 @@
                 if (url.endsWith('m3u8')) {
                     return new Promise(function(resolve, reject) {
                         var processAfter = async function(response) {
-                            //Here we check the m3u8 for any ads and also try fallback player types if needed.
-                            var responseText = await response.text();
-                            var weaverText = null;
-                            weaverText = await processM3U8(url, responseText, realFetch, PlayerType2);
-                            if (weaverText.includes(AdSignifier)) {
-                                weaverText = await processM3U8(url, responseText, realFetch, PlayerType3);
+                            if (response.status === 200) {
+                                //Here we check the m3u8 for any ads and also try fallback player types if needed.
+                                var responseText = await response.text();
+                                var weaverText = null;
+                                weaverText = await processM3U8(url, responseText, realFetch, PlayerType2);
+                                if (weaverText.includes(AdSignifier)) {
+                                    weaverText = await processM3U8(url, responseText, realFetch, PlayerType3);
+                                }
+                                if (weaverText.includes(AdSignifier)) {
+                                    weaverText = await processM3U8(url, responseText, realFetch, PlayerType4);
+                                }
+                                resolve(new Response(weaverText));
+                            } else {
+                                resolve(response);
                             }
-                            if (weaverText.includes(AdSignifier)) {
-                                weaverText = await processM3U8(url, responseText, realFetch, PlayerType4);
-                            }
-                            resolve(new Response(weaverText));
                         };
                         var send = function() {
                             return realFetch(url, options).then(function(response) {

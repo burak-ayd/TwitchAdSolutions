@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TwitchAdSolutions (video-swap-new)
 // @namespace    https://github.com/pixeltris/TwitchAdSolutions
-// @version      1.30
+// @version      1.31
 // @updateURL    https://github.com/pixeltris/TwitchAdSolutions/raw/master/video-swap-new/video-swap-new.user.js
 // @downloadURL  https://github.com/pixeltris/TwitchAdSolutions/raw/master/video-swap-new/video-swap-new.user.js
 // @description  Multiple solutions for blocking Twitch ads (video-swap-new)
@@ -38,12 +38,16 @@
     var twitchWorkers = [];
     const oldWorker = window.Worker;
     function hookWindowWorker() {
-        window.Worker = class Worker extends oldWorker {
+        var newWorker = window.Worker = class Worker extends oldWorker {
             constructor(twitchBlobUrl, options) {
                 var isTwitchWorker = false;
                 try {
                     isTwitchWorker = new URL(twitchBlobUrl).origin.endsWith('.twitch.tv');
                 } catch {}
+                if (newWorker.toString() !== window.Worker.toString()) {
+                    console.log('Multiple twitch adblockers installed. Skipping Worker hook (video-swap-new)');
+                    isTwitchWorker = false;
+                }
                 if (!isTwitchWorker) {
                     super(twitchBlobUrl, options);
                     return;
